@@ -206,3 +206,119 @@ class TestOrchestrator:
         types = {s.get("type") for s in job.get("steps", [])}
         assert "agent_done" in types
         assert "completed" in types
+
+
+
+# ---------------- Compliance / CaseFiles / Lawyer network ----------------
+LAWYER_EMAIL = "legale@juspatrimonium.it"
+LAWYER_PASSWORD = "Legale2026!"
+
+
+@pytest.fixture(scope="session")
+def lawyer_session():
+    s = requests.Session()
+    r = s.post(f"{API}/auth/login", json={"email": LAWYER_EMAIL, "password": LAWYER_PASSWORD}, timeout=20)
+    assert r.status_code == 200, f"Lawyer login failed: {r.status_code} {r.text}"
+    assert r.json().get("role") == "lawyer"
+    return s
+
+
+class TestCompliance:
+    def test_compliance_info(self, admin_session):
+        r = admin_session.get(f"{API}/compliance/info", timeout=15)
+        assert r.status_code == 200
+        d = r.json()
+        assert "250" in d["tariffa"]
+        assert d["status_flow"] == ["inviata", "in_revisione", "asseverata", "integrazioni", "pronto_pec"]
+
+
+class TestCaseFiles:
+    """Full lifecycle: admin creates casefile -> lawyer sees -> lawyer patches -> PDF download."""
+
+    def test_create_casefile_and_pdf(self, admin_session, lawyer_session):
+        # Create casefile from most recent completed orchestration run (owner=admin)
+        payload = {"draft_body": "Corpo bozza test asseverazione.",
+                   "draft_label": "TEST_diffida", "tipo_atto": "diffida",
+                   "note": "Nota interna test"}
+        r = admin_session.post(f"{API}/casefiles", json=payload, timeout=20)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        cf_id = d["id"]
+        assert d["status"] == "inviata"
+        assert d["protocol"].startswith("FTU-")
+
+        # Admin sees it in list
+        r2 = admin_session.get(f"{API}/casefiles", timeout=15)
+        assert r2.status_code == 200
+        assert any(c["id"] == cf_id for c in r2.json())
+
+        # Lawyer sees it (role-aware list)
+        r3 = lawyer_session.get(f"{API}/casefiles", timeout=15)
+        assert r3.status_code == 200
+        found = [c for c in r3.json() if c["id"] == cf_id]
+        assert len(found) == 1
+        assert found[0]["tariffa"] and "250" in found[0]["tariffa"]
+
+        # Lawyer takes charge
+        r4 = lawyer_session.patch(f"{API}/casefiles/{cf_id}",
+                                  json={"assign_self": True}, timeout=15)
+        assert r4.status_code == 200
+        cf = r4.json()
+        assert cf["assigned_lawyer_name"]
+        assert cf["status"] == "in_revisione"
+
+        # Lawyer edits draft and moves to asseverata
+        r5 = lawyer_session.patch(f"{API}/casefiles/{cf_id}",
+                                  json={"edited_draft": "Bozza rivista dal legale.",
+                                        "status": "asseverata"}, timeout=15)
+        assert r5.status_code == 200
+        assert r5.json()["status"] == "asseverata"
+
+        # GET single casefile
+        r6 = lawyer_session.get(f"{API}/casefiles/{cf_id}", timeout=15)
+        assert r6.status_code == 200
+        assert r6.json()["edited_draft"] == "Bozza rivista dal legale."
+        assert "_id" not in r6.json()  # sanitized
+
+        # PDF download (Fascicolo Tecnico Unificato PDF/A)
+        r7 = admin_session.get(f"{API}/casefiles/{cf_id}/pdf", timeout=30)
+        assert r7.status_code == 200
+        assert r7.content[:4] == b"%PDF"
+        assert len(r7.content) > 500
+
+    def test_invalid_status_rejected(self, admin_session, lawyer_session):
+        r = admin_session.post(f"{API}/casefiles",
+                               json={"draft_body": "x", "draft_label": "TEST_badstatus", "tipo_atto": "diffida"},
+                               timeout=15)
+        cf_id = r.json()["id"]
+        r2 = lawyer_session.patch(f"{API}/casefiles/{cf_id}", json={"status": "invalid_state"}, timeout=15)
+        assert r2.status_code == 400
+
+
+class TestAdminLawyers:
+    def test_lawyer_endpoints_admin_only(self, lawyer_session):
+        # Lawyer must NOT access admin endpoints
+        r = lawyer_session.get(f"{API}/admin/lawyers", timeout=15)
+        assert r.status_code == 403
+
+    def test_create_and_list_lawyer(self, admin_session):
+        email = f"test_lawyer_{int(time.time())}@example.com"
+        r = admin_session.post(f"{API}/admin/lawyers",
+                               json={"email": email, "password": "Passw0rd!", "name": "TEST_Legale"}, timeout=20)
+        assert r.status_code == 200, r.text
+        assert r.json()["role"] == "lawyer"
+
+        r2 = admin_session.get(f"{API}/admin/lawyers", timeout=15)
+        assert r2.status_code == 200
+        lawyers = r2.json()
+        assert any(l["email"] == email for l in lawyers)
+        # new lawyer can log in
+        s = requests.Session()
+        rl = s.post(f"{API}/auth/login", json={"email": email, "password": "Passw0rd!"}, timeout=15)
+        assert rl.status_code == 200
+        assert rl.json()["role"] == "lawyer"
+
+    def test_duplicate_email_rejected(self, admin_session):
+        r = admin_session.post(f"{API}/admin/lawyers",
+                               json={"email": LAWYER_EMAIL, "password": "AnyPass1!", "name": "dup"}, timeout=15)
+        assert r.status_code == 400

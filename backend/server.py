@@ -298,7 +298,7 @@ async def _run_orchestration(job_id: str, case_text: str, owner: str):
 
     reports = {}
     try:
-        # Wave 1: A1, A2, A3 analyze in parallel
+        # Wave 1: A1, A2, A3 analyze in parallel (serialized at the LLM boundary by agents.LLM_SEM)
         await push({"type": "bus", "message": "Orchestratore: avvio Cluster A — ingestione documentale completata"})
         wave1 = ["A1", "A2", "A3"]
         for aid in wave1:
@@ -548,6 +548,169 @@ async def vault_dataset_preview(user: dict = Depends(get_current_user)):
     return {"count": count, "samples": lines}
 
 
+# ------------------------- Compliance: Case files & Lawyer network -------------------------
+STATUS_FLOW = ["inviata", "in_revisione", "asseverata", "integrazioni", "pronto_pec"]
+TARIFFA_FLAT = "€ 250,00 + IVA a fascicolo"
+
+
+class CaseFileCreate(BaseModel):
+    draft_body: str = ""
+    draft_label: str = ""
+    tipo_atto: str = ""
+    job_id: Optional[str] = None
+    note: str = ""
+
+
+class CaseFileUpdate(BaseModel):
+    status: Optional[str] = None
+    edited_draft: Optional[str] = None
+    note: Optional[str] = None
+    assign_self: bool = False
+
+
+class LawyerCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=6)
+    name: str = "Avvocato Convenzionato"
+
+
+async def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Riservato all'amministratore")
+    return user
+
+
+async def require_lawyer(user: dict = Depends(get_current_user)) -> dict:
+    if user.get("role") not in ("lawyer", "admin"):
+        raise HTTPException(status_code=403, detail="Riservato ai legali convenzionati")
+    return user
+
+
+def _clean(doc: dict) -> dict:
+    doc = dict(doc)
+    doc["id"] = doc.pop("_id", None)
+    return doc
+
+
+@api.post("/casefiles")
+async def create_casefile(data: CaseFileCreate, user: dict = Depends(get_current_user)):
+    if data.job_id:
+        job = await db.orchestration_jobs.find_one({"_id": data.job_id, "owner": user["id"]})
+    else:
+        job = await db.orchestration_jobs.find_one({"owner": user["id"], "status": "completed"}, sort=[("created_at", -1)])
+    snapshot = {}
+    if job:
+        snapshot = {"title": job.get("title"), "case_text": job.get("case_text"),
+                    "reports": job.get("reports"), "synthesis": job.get("synthesis"),
+                    "avg_score": job.get("avg_score")}
+    now = datetime.now(timezone.utc).isoformat()
+    title = data.draft_label or (job.get("title") if job else "Fascicolo tecnico")
+    cf = {"_id": str(uuid.uuid4()), "owner": user["id"], "owner_name": user.get("name"),
+          "owner_email": user.get("email"), "title": title, "tipo_atto": data.tipo_atto,
+          "draft": data.draft_body, "edited_draft": "", "note": data.note, "snapshot": snapshot,
+          "protocol": f"FTU-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}",
+          "status": "inviata", "assigned_lawyer": None, "assigned_lawyer_name": None,
+          "tariffa": TARIFFA_FLAT, "history": [{"status": "inviata", "by": user.get("name"), "ts": now}],
+          "created_at": now, "updated_at": now}
+    await db.casefiles.insert_one(cf)
+    return {"id": cf["_id"], "status": "inviata", "protocol": cf["protocol"]}
+
+
+@api.get("/casefiles")
+async def list_casefiles(user: dict = Depends(get_current_user)):
+    if user.get("role") in ("lawyer", "admin"):
+        q = {}
+    else:
+        q = {"owner": user["id"]}
+    out = []
+    async for cf in db.casefiles.find(q).sort("created_at", -1):
+        s = cf.get("snapshot") or {}
+        out.append({"id": cf["_id"], "title": cf.get("title"), "status": cf.get("status"),
+                    "owner_name": cf.get("owner_name"), "owner_email": cf.get("owner_email"),
+                    "tipo_atto": cf.get("tipo_atto"), "protocol": cf.get("protocol"),
+                    "assigned_lawyer_name": cf.get("assigned_lawyer_name"),
+                    "avg_score": s.get("avg_score"), "totale_danno_eur": (s.get("synthesis") or {}).get("totale_danno_eur"),
+                    "tariffa": cf.get("tariffa"), "created_at": cf.get("created_at"), "updated_at": cf.get("updated_at")})
+    return out
+
+
+@api.get("/casefiles/{cf_id}")
+async def get_casefile(cf_id: str, user: dict = Depends(get_current_user)):
+    cf = await db.casefiles.find_one({"_id": cf_id})
+    if not cf:
+        raise HTTPException(status_code=404, detail="Fascicolo non trovato")
+    if user.get("role") not in ("lawyer", "admin") and cf.get("owner") != user["id"]:
+        raise HTTPException(status_code=403, detail="Accesso negato")
+    return _clean(cf)
+
+
+@api.patch("/casefiles/{cf_id}")
+async def update_casefile(cf_id: str, data: CaseFileUpdate, user: dict = Depends(require_lawyer)):
+    cf = await db.casefiles.find_one({"_id": cf_id})
+    if not cf:
+        raise HTTPException(status_code=404, detail="Fascicolo non trovato")
+    now = datetime.now(timezone.utc).isoformat()
+    updates = {"updated_at": now}
+    if data.assign_self:
+        updates["assigned_lawyer"] = user["id"]
+        updates["assigned_lawyer_name"] = user.get("name")
+        if cf.get("status") == "inviata":
+            updates["status"] = "in_revisione"
+    if data.status:
+        if data.status not in STATUS_FLOW:
+            raise HTTPException(status_code=400, detail="Stato non valido")
+        updates["status"] = data.status
+    if data.edited_draft is not None:
+        updates["edited_draft"] = data.edited_draft
+    if data.note is not None:
+        updates["lawyer_note"] = data.note
+    hist = cf.get("history", [])
+    hist.append({"status": updates.get("status", cf.get("status")), "by": user.get("name"), "ts": now})
+    updates["history"] = hist
+    await db.casefiles.update_one({"_id": cf_id}, {"$set": updates})
+    cf.update(updates)
+    return _clean(cf)
+
+
+@api.get("/casefiles/{cf_id}/pdf")
+async def casefile_pdf(cf_id: str, user: dict = Depends(get_current_user)):
+    cf = await db.casefiles.find_one({"_id": cf_id})
+    if not cf:
+        raise HTTPException(status_code=404, detail="Fascicolo non trovato")
+    if user.get("role") not in ("lawyer", "admin") and cf.get("owner") != user["id"]:
+        raise HTTPException(status_code=403, detail="Accesso negato")
+    content = docgen.build_casefile_pdf(cf)
+    fname = (cf.get("protocol") or "fascicolo")
+    return StreamingResponse(io.BytesIO(content), media_type="application/pdf",
+                             headers={"Content-Disposition": f'attachment; filename="{fname}.pdf"'})
+
+
+@api.post("/admin/lawyers")
+async def create_lawyer(data: LawyerCreate, admin: dict = Depends(require_admin)):
+    email = data.email.lower()
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="Email già registrata")
+    await db.users.insert_one({"email": email, "password_hash": hash_password(data.password),
+                               "name": data.name, "role": "lawyer",
+                               "created_at": datetime.now(timezone.utc).isoformat()})
+    return {"email": email, "name": data.name, "role": "lawyer"}
+
+
+@api.get("/admin/lawyers")
+async def list_lawyers(admin: dict = Depends(require_admin)):
+    out = []
+    async for u in db.users.find({"role": "lawyer"}).sort("created_at", -1):
+        cnt = await db.casefiles.count_documents({"assigned_lawyer": str(u["_id"])})
+        out.append({"id": str(u["_id"]), "email": u["email"], "name": u.get("name"),
+                    "created_at": u.get("created_at"), "pratiche_assegnate": cnt})
+    return out
+
+
+@api.get("/compliance/info")
+async def compliance_info(user: dict = Depends(get_current_user)):
+    return {"tariffa": TARIFFA_FLAT, "status_flow": STATUS_FLOW}
+
+
 @api.get("/")
 async def root():
     return {"message": "JUS-PATRIMONIUM API attiva", "cluster": "A - Legal & Administrative Justice"}
@@ -577,6 +740,13 @@ async def startup():
         logger.info("Admin seeded: %s", admin_email)
     elif not verify_password(admin_pw, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_pw)}})
+    # Seed a demo convenzionato lawyer for the portal
+    lawyer_email = "legale@juspatrimonium.it"
+    if not await db.users.find_one({"email": lawyer_email}):
+        await db.users.insert_one({"email": lawyer_email, "password_hash": hash_password("Legale2026!"),
+                                   "name": "Avv. Demo Convenzionato", "role": "lawyer",
+                                   "created_at": datetime.now(timezone.utc).isoformat()})
+        logger.info("Demo lawyer seeded: %s", lawyer_email)
 
 
 @app.on_event("shutdown")

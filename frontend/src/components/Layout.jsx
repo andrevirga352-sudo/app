@@ -1,17 +1,18 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
-  LayoutDashboard, Network, FileSearch, Calculator, FileSignature, Database, Scale, LogOut,
+  LayoutDashboard, Network, FileSearch, Calculator, FileSignature, Database, Scale, LogOut, Gavel,
 } from "lucide-react";
 import { Button } from "./ui/button";
+import { Footer } from "./Legal";
 import { toast } from "sonner";
 
 const NAV = [
   { to: "/app/dashboard", label: "Quadro Generale", icon: LayoutDashboard, testid: "nav-tab-dashboard", sub: "Rischi & scadenze" },
   { to: "/app/orchestrator", label: "Console Multi-Agente", icon: Network, testid: "nav-tab-orchestrator", sub: "Bus Cluster A" },
-  { to: "/app/documenti", label: "Analisi Documentale", icon: FileSearch, testid: "nav-tab-document-analysis", sub: "Atti PA & contratti" },
-  { to: "/app/danno", label: "Matrice del Danno", icon: Calculator, testid: "nav-tab-damage-matrix", sub: "Quantificazione" },
-  { to: "/app/generatore", label: "Generatore Atti", icon: FileSignature, testid: "nav-tab-generator", sub: "PEC · TAR · Corte Conti" },
+  { to: "/app/documenti", label: "Audit Documentale", icon: FileSearch, testid: "nav-tab-document-analysis", sub: "Atti PA & contratti" },
+  { to: "/app/danno", label: "Stima Peritale del Pregiudizio", icon: Calculator, testid: "nav-tab-damage-matrix", sub: "Quantificazione economica" },
+  { to: "/app/generatore", label: "Generatore Bozze Tecniche", icon: FileSignature, testid: "nav-tab-generator", sub: "PEC · TAR · Corte Conti" },
   { to: "/app/vault", label: "Vault Memoria", icon: Database, testid: "nav-tab-vault", sub: "RAG & self-learning" },
 ];
 
@@ -61,6 +62,19 @@ export default function Layout() {
               </NavLink>
             );
           })}
+          {user?.role === "admin" && (
+            <NavLink to="/app/rete-legali" data-testid="nav-tab-lawyers"
+              className={({ isActive }) =>
+                `flex items-start gap-3 px-3 py-2.5 rounded-md transition-colors duration-150 ${
+                  isActive ? "bg-white/12 text-white" : "text-slate-300 hover:bg-white/5 hover:text-white"
+                }`}>
+              <Gavel className="w-[18px] h-[18px] mt-0.5 shrink-0" />
+              <span>
+                <span className="block text-sm font-medium leading-tight">Rete Legali</span>
+                <span className="block text-[11px] text-slate-400/80">Avvocati convenzionati</span>
+              </span>
+            </NavLink>
+          )}
         </nav>
         <div className="px-4 py-4 border-t border-white/10">
           <div className="flex items-center gap-3 mb-3">
@@ -82,6 +96,7 @@ export default function Layout() {
       <main className="flex-1 min-w-0">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8">
           <Outlet />
+          <Footer />
         </div>
       </main>
     </div>

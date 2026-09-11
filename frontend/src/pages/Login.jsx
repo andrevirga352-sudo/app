@@ -20,9 +20,9 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      const u = await login(email, password);
       toast.success("Accesso effettuato");
-      nav("/app/dashboard");
+      nav(u.role === "lawyer" ? "/lawyer-portal" : "/app/dashboard");
     } catch (err) {
       toast.error(apiError(err.response?.data?.detail) || "Accesso non riuscito");
     } finally {

@@ -1,0 +1,30 @@
+{
+  "summary": "Second iteration — full regression + NEW compliance/lawyer-network features. Backend: 26/26 pytest cases PASS including the previously-failing orchestrator E2E (concurrency=1 fix via asyncio.Semaphore(1) in agents.py works; full 5-agent run completes in ~40s and produces synthesis + reports for A1..A5). LLM draft endpoint also returns a >50 char body. New endpoints /api/compliance/info, /api/casefiles (POST/GET/PATCH/PDF), /api/admin/lawyers (POST/GET) all work with proper role guards (lawyer→403 on /api/admin/lawyers). Frontend: admin logs in and lands on /app/dashboard; global footer + Note Legali dialog present on every /app page; Rete Legali sidebar tab (admin-only) opens /app/rete-legali and creates a lawyer that logs in; Generator legal-gate modal opens on Export PDF/DOCX, checkbox starts UNCHECKED, confirm button is disabled until checked, then triggers a real PDF download; Richiedi Asseverazione creates a fascicolo appearing in 'Fascicoli inviati'. Lawyer login is correctly redirected to /lawyer-portal (not /app/dashboard), lawyer does NOT see admin's nav-tab-lawyers, casefile rows are listed, opening one shows all required elements (lawyer-draft-editor, take-charge, save-draft, status-select, update-status, tariffa-box '€ 250,00 + IVA', download-fascicolo).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Note Legali dialog", "issues": ["Dialog overlay lingers with pointer-events blocking after closing via Escape in some flows; consider ensuring DialogOverlay is fully removed on close so subsequent nav clicks aren't intercepted (only affects rapid programmatic navigation; user close via X works fine)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_juspatrimonium.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py:312 still uses asyncio.gather over 3 LLM agents; it works ONLY because agents.py wraps every send_message in a global asyncio.Semaphore(1). This is fine but non-obvious — add a code comment referencing LLM_SEM, or serialize wave1 with a for-loop for clarity.",
+    "server.py is 755 lines and mixes auth/documents/orchestrator/damage/generator/vault/casefiles/lawyers — should be split into routers for maintainability.",
+    "server.py:707 list_lawyers uses variable name 'l' (ambiguous single-letter) inside async for loop — minor lint issue.",
+    "GET /api/casefiles for role='lawyer' or 'admin' returns ALL casefiles from all users (q={}); if multi-tenant separation ever matters, filter by lawyer network scope.",
+    "PATCH /api/casefiles/{id} requires role in ('lawyer','admin') — an owner (regular user) cannot edit their own draft note post-submission; acceptable per HITL design.",
+    "server.py:71 cookies use samesite='none' + secure=True — correct for HTTPS preview; will not work over http.",
+    "docgen.build_casefile_pdf output verified as valid PDF (%PDF magic, >500 bytes); PDF/A compliance claim is not verified programmatically."
+  ],
+  "updated_files": ["/app/backend/tests/test_juspatrimonium.py"],
+  "success_rate": {"backend": "100% (26/26)", "frontend": "100% for tested flows (compliance UI, download-gate, asseverazione, admin lawyer mgmt, lawyer portal, role guard)"},
+  "test_credentials": "admin@juspatrimonium.it / Patrimonio2026! and legale@juspatrimonium.it / Legale2026! — both verified working",
+  "seed_data_creation": "Created TEST_ prefixed pasted documents, damage matrices, casefiles (TEST_diffida, TEST_badstatus), and a UI-created lawyer ui_lawyer_<ts>@example.com plus test_lawyer_<ts>@example.com from pytest.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All new compliance/lawyer HITL features validated end-to-end (backend + frontend). Orchestrator concurrency fix confirmed — orchestrator full-flow test completes in ~40s. Data-testid coverage is complete for the flows in the request. If future iterations extend the lawyer network (e.g., per-lawyer casefile assignment/scoping), add filtering in GET /api/casefiles and re-verify with a second lawyer account.",
+  "rca of the issue": "N/A — previous iteration_1 blocker (orchestrator failing due to concurrent LLM calls) is resolved; agents.py now wraps every LlmChat.send_message in a global asyncio.Semaphore(1), so the wave1 asyncio.gather effectively serializes at the LLM boundary, staying within Emergent Universal Key concurrency=1."
+}

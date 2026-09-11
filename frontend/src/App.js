@@ -11,6 +11,8 @@ import DocumentAnalysis from "./pages/DocumentAnalysis";
 import DamageMatrix from "./pages/DamageMatrix";
 import Generator from "./pages/Generator";
 import Vault from "./pages/Vault";
+import LawyerPortal from "./pages/LawyerPortal";
+import AdminLawyers from "./pages/AdminLawyers";
 import { Loader2 } from "lucide-react";
 
 function Protected({ children }) {
@@ -22,6 +24,19 @@ function Protected({ children }) {
       </div>
     );
   if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function RoleProtected({ roles, children }) {
+  const { user } = useAuth();
+  if (user === null)
+    return (
+      <div className="min-h-screen flex items-center justify-center jp-canvas">
+        <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
+      </div>
+    );
+  if (!user) return <Navigate to="/login" replace />;
+  if (!roles.includes(user.role)) return <Navigate to="/app/dashboard" replace />;
   return children;
 }
 
@@ -49,7 +64,16 @@ function App() {
               <Route path="danno" element={<DamageMatrix />} />
               <Route path="generatore" element={<Generator />} />
               <Route path="vault" element={<Vault />} />
+              <Route path="rete-legali" element={<RoleProtected roles={["admin"]}><AdminLawyers /></RoleProtected>} />
             </Route>
+            <Route
+              path="/lawyer-portal"
+              element={
+                <RoleProtected roles={["lawyer", "admin"]}>
+                  <LawyerPortal />
+                </RoleProtected>
+              }
+            />
             <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
           </Routes>
         </BrowserRouter>

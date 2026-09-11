@@ -4,6 +4,7 @@ import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Calculator, Save, FileDown, Loader2 } from "lucide-react";
+import { LegalGate } from "../components/Legal";
 import { toast } from "sonner";
 
 const eur = (n) => new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n || 0);
@@ -11,6 +12,7 @@ const eur = (n) => new Intl.NumberFormat("it-IT", { style: "currency", currency:
 export default function DamageMatrix() {
   const [voci, setVoci] = useState([]);
   const [exporting, setExporting] = useState(false);
+  const [gateOpen, setGateOpen] = useState(false);
 
   useEffect(() => {
     api.get("/damage/template").then((r) => setVoci(r.data.voci));
@@ -50,9 +52,9 @@ export default function DamageMatrix() {
 
   return (
     <div className="jp-fade-up" data-testid="damage-matrix-view">
-      <p className="jp-eyebrow text-slate-500">Agent A4 · Damages Quantifier</p>
-      <h1 className="text-3xl sm:text-4xl font-serif font-bold text-slate-900 mt-1">Matrice di Quantificazione del Danno</h1>
-      <p className="text-slate-500 mt-2 text-sm">Simulatore tabellare del danno erariale ed extracontrattuale ex artt. 1223, 1226 c.c. e 21-quinquies L. 241/90.</p>
+      <p className="jp-eyebrow text-slate-500">Agent A4 · Stima Peritale</p>
+      <h1 className="text-3xl sm:text-4xl font-serif font-bold text-slate-900 mt-1">Stima Peritale del Pregiudizio Economico</h1>
+      <p className="text-slate-500 mt-2 text-sm">Prospetto estimativo del pregiudizio patrimoniale ed extracontrattuale ex artt. 1223, 1226 c.c. e 21-quinquies L. 241/90.</p>
 
       <Card className="p-0 border-slate-200 mt-6 overflow-hidden">
         <table className="w-full text-sm">
@@ -89,10 +91,11 @@ export default function DamageMatrix() {
         <Button data-testid="damage-matrix-calculate-btn" onClick={save} className="bg-slate-900 hover:bg-slate-800 text-white">
           <Save className="w-4 h-4 mr-2" /> Salva matrice
         </Button>
-        <Button data-testid="export-pdf-action-button" onClick={exportPdf} variant="outline" disabled={exporting}>
+        <Button data-testid="export-pdf-action-button" onClick={() => setGateOpen(true)} variant="outline" disabled={exporting}>
           {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />} Esporta PDF
         </Button>
       </div>
+      <LegalGate open={gateOpen} onOpenChange={setGateOpen} onConfirm={exportPdf} title="Download stima peritale" />
     </div>
   );
 }
