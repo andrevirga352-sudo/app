@@ -45,6 +45,14 @@ evolutiva (Vector RAG + Reflection + dataset JSONL per auto-fine-tuning), connet
 - Admin `/app/rete-legali`: crea/invita legali convenzionati, monitora fascicoli in rete.
 - Testato E2E: backend 26/26, frontend tutti i flussi (iteration_2).
 
+### Modulo Ingestione Comunicazioni Informali & Contraddittorio (Agent A6) — 2026-06
+- Ingestione chat WhatsApp (.txt), thread email (.pdf), screenshot (.png/.jpg → OCR vision gpt-5.4-mini).
+- Sanitizzazione GDPR: masking automatico numeri di telefono privati, codici fiscali, email; parser WhatsApp con estrazione data/ora/mittente/ruolo istituzionale + uid e riferimento sorgente.
+- Consenso obbligatorio (checkbox) ex art. 24 Cost. e art. 2712 c.c.; upload bloccato senza consenso.
+- Sotto-agente A6 (Cross-Examination & Bad-Faith Detector): confronto cronologico messaggi vs atti formali; rileva rassicurazioni tradite (buona fede ex art. 1 L.241/1990) e consapevolezza preventiva P.A. (esclusione errore scusabile).
+- Prospetto Comunicazioni Informali (tabella 4 colonne: Data/Ora · Interlocutore/Ruolo · Estratto · Rilevanza probatoria/vizio) + clausola standard ex art. 2712 c.c.; confluisce nel Fascicolo Tecnico PDF/A e visibile nel portale legale.
+- Testato E2E: backend 7/7 nuovi (33 totali), frontend tutti i flussi (iteration_3).
+
 ## Stato integrazioni
 - Universal Key operativa ma **credito esaurito durante i test** (budget $0.40). Necessario top-up per i flussi LLM
   (Orchestratore + Generatore draft). Tutti gli altri flussi funzionano senza LLM.

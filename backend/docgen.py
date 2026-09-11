@@ -180,8 +180,23 @@ def build_casefile_pdf(cf: dict) -> bytes:
             if para.strip():
                 story.append(Paragraph(esc(para), small))
 
-    # 5. Allegati
-    story.append(Paragraph("5. Allegati Originali (estratto)", sec))
+    # 5. Prospetto comunicazioni informali (art. 2712 c.c.)
+    comm = snap.get("communications") or {}
+    prospetto = comm.get("prospetto") or []
+    if prospetto:
+        story.append(Paragraph("5. Prospetto Comunicazioni Informali (art. 2712 c.c.)", sec))
+        if comm.get("sintesi"):
+            story.append(Paragraph(esc(comm.get("sintesi")), p))
+        rows = [[esc(r.get("data_ora")), Paragraph(esc(r.get("interlocutore")), small),
+                 Paragraph(esc(r.get("estratto")), small), Paragraph(esc(r.get("rilevanza_vizio")), small)]
+                for r in prospetto[:15]]
+        story.append(make_table(["Data e Ora", "Interlocutore / Ruolo", "Estratto saliente", "Rilevanza probatoria / vizio"],
+                                 rows, [2.6 * cm, 3 * cm, 5.4 * cm, 5 * cm]))
+        story.append(Spacer(1, 4))
+        story.append(Paragraph("<i>" + esc(comm.get("clausola") or "") + "</i>", small))
+
+    # 6. Allegati
+    story.append(Paragraph("6. Allegati Originali (estratto)", sec))
     allegato = snap.get("case_text") or "Nessun allegato testuale disponibile."
     for para in str(allegato)[:3000].split("\n"):
         if para.strip():

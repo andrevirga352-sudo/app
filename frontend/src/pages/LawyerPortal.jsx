@@ -73,6 +73,7 @@ export default function LawyerPortal() {
   const snap = sel?.snapshot || {};
   const reports = snap.reports || {};
   const synth = snap.synthesis || {};
+  const comm = snap.communications || {};
 
   return (
     <div className="min-h-screen jp-canvas">
@@ -157,6 +158,16 @@ export default function LawyerPortal() {
                 <div className="flex justify-between border-t border-slate-100 pt-2 text-sm font-semibold">
                   <span>Totale stimato</span><span className="jp-mono">{eur(synth.totale_danno_eur)}</span>
                 </div>
+                {(comm.prospetto || []).length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-slate-100" data-testid="lawyer-prospetto">
+                    <p className="jp-eyebrow text-slate-400 mb-1">Prospetto comunicazioni (art. 2712 c.c.)</p>
+                    <ul className="text-xs text-slate-700 space-y-1">
+                      {comm.prospetto.slice(0, 4).map((r, i) => (
+                        <li key={i}><span className="jp-mono text-slate-500">{r.data_ora}</span> — <b>{r.interlocutore}</b>: {r.rilevanza_vizio}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <details className="mt-3">
                   <summary className="text-xs text-blue-800 cursor-pointer">Allegato originale (estratto)</summary>
                   <pre className="text-[10px] jp-mono text-slate-500 whitespace-pre-wrap break-words mt-2 max-h-40 overflow-y-auto jp-scroll">{(snap.case_text || "").slice(0, 1500)}</pre>

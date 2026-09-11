@@ -17,7 +17,7 @@ import jwt
 import pypdf
 from docx import Document as DocxReader
 from bson import ObjectId
-from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -27,6 +27,8 @@ from typing import Optional, List
 import agents as ag
 from memory import MemoryStore
 import docgen
+import comms
+import base64
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
@@ -603,6 +605,11 @@ async def create_casefile(data: CaseFileCreate, user: dict = Depends(get_current
         snapshot = {"title": job.get("title"), "case_text": job.get("case_text"),
                     "reports": job.get("reports"), "synthesis": job.get("synthesis"),
                     "avg_score": job.get("avg_score")}
+    comm = await db.comm_analyses.find_one({"owner": user["id"]}, sort=[("created_at", -1)])
+    if comm:
+        snapshot["communications"] = {"prospetto": comm.get("prospetto", []),
+                                      "clausola": comm.get("clausola_2712"),
+                                      "sintesi": comm.get("sintesi", "")}
     now = datetime.now(timezone.utc).isoformat()
     title = data.draft_label or (job.get("title") if job else "Fascicolo tecnico")
     cf = {"_id": str(uuid.uuid4()), "owner": user["id"], "owner_name": user.get("name"),
@@ -709,6 +716,108 @@ async def list_lawyers(admin: dict = Depends(require_admin)):
 @api.get("/compliance/info")
 async def compliance_info(user: dict = Depends(get_current_user)):
     return {"tariffa": TARIFFA_FLAT, "status_flow": STATUS_FLOW}
+
+
+# ------------------------- Communications ingestion (WhatsApp/email/screenshot) -------------------------
+class CommAnalyzeInput(BaseModel):
+    comm_ids: List[str] = []
+    job_id: Optional[str] = None
+    acts_text: str = ""
+
+
+async def _extract_communication(filename: str, content: bytes, owner: str):
+    name = filename.lower()
+    if name.endswith((".png", ".jpg", ".jpeg", ".webp")):
+        b64 = base64.b64encode(content).decode("utf-8")
+        raw = await ag.transcribe_image(f"ocr-{uuid.uuid4()}", b64)
+        source_type = "screenshot"
+    elif name.endswith(".pdf"):
+        raw = _extract_text(filename, content)
+        source_type = "pdf"
+    else:
+        raw = content.decode("utf-8", errors="ignore")
+        source_type = "whatsapp_txt"
+    masked = comms.mask_pii(raw)
+    messages = comms.parse_whatsapp(masked)
+    if not messages:
+        structured = await ag.structure_messages(f"struct-{uuid.uuid4()}", masked)
+        messages = structured if isinstance(structured, list) else []
+    messages = comms.enrich_messages(messages, filename)
+    return source_type, masked, messages
+
+
+@api.post("/communications/upload")
+async def upload_communication(file: UploadFile = File(...), consent: str = Form("false"),
+                               user: dict = Depends(get_current_user)):
+    if str(consent).lower() not in ("true", "1", "on", "yes"):
+        raise HTTPException(status_code=400, detail="Consenso obbligatorio ex art. 24 Cost. e art. 2712 c.c.")
+    content = await file.read()
+    source_type, masked, messages = await _extract_communication(file.filename, content, user["id"])
+    doc = {"_id": str(uuid.uuid4()), "owner": user["id"], "filename": file.filename,
+           "source_type": source_type, "messages": messages, "masked_text": masked[:8000],
+           "message_count": len(messages), "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.communications.insert_one(doc)
+    return {"id": doc["_id"], "filename": file.filename, "source_type": source_type,
+            "message_count": len(messages), "messages": messages[:20], "masked_preview": masked[:800]}
+
+
+@api.get("/communications")
+async def list_communications(user: dict = Depends(get_current_user)):
+    out = []
+    async for c in db.communications.find({"owner": user["id"]}).sort("created_at", -1):
+        out.append({"id": c["_id"], "filename": c["filename"], "source_type": c.get("source_type"),
+                    "message_count": c.get("message_count", 0), "created_at": c["created_at"]})
+    return out
+
+
+@api.get("/communications/{comm_id}")
+async def get_communication(comm_id: str, user: dict = Depends(get_current_user)):
+    c = await db.communications.find_one({"_id": comm_id, "owner": user["id"]})
+    if not c:
+        raise HTTPException(status_code=404, detail="Comunicazione non trovata")
+    return _clean(c)
+
+
+@api.post("/communications/analyze")
+async def analyze_communications(data: CommAnalyzeInput, user: dict = Depends(get_current_user)):
+    q = {"owner": user["id"]}
+    if data.comm_ids:
+        q["_id"] = {"$in": data.comm_ids}
+    messages = []
+    sources = []
+    async for c in db.communications.find(q).sort("created_at", 1):
+        messages.extend(c.get("messages", []))
+        sources.append(c["filename"])
+    if not messages:
+        raise HTTPException(status_code=400, detail="Nessun messaggio da analizzare: carica prima una comunicazione")
+    acts_text = data.acts_text
+    if not acts_text:
+        job = await db.orchestration_jobs.find_one({"_id": data.job_id, "owner": user["id"]}) if data.job_id else \
+            await db.orchestration_jobs.find_one({"owner": user["id"], "status": "completed"}, sort=[("created_at", -1)])
+        if job:
+            acts_text = job.get("case_text", "")
+    analysis = await ag.run_contradiction(f"contrad-{uuid.uuid4()}", messages, acts_text)
+    prospetto = analysis.get("prospetto", []) if isinstance(analysis, dict) else []
+    result = {"_id": str(uuid.uuid4()), "owner": user["id"], "sources": sources,
+              "discrepanze": analysis.get("discrepanze", []) if isinstance(analysis, dict) else [],
+              "prospetto": prospetto, "sintesi": analysis.get("sintesi", "") if isinstance(analysis, dict) else "",
+              "clausola_2712": comms.CLAUSOLA_2712, "message_count": len(messages),
+              "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.comm_analyses.insert_one(result)
+    await memory.add("correction", "Contraddittorio comunicazioni: " + (result["sintesi"] or "")[:1000],
+                     agent_id="A6", owner=user["id"])
+    return _clean(result)
+
+
+@api.get("/communications/analyses/latest")
+async def latest_comm_analysis(user: dict = Depends(get_current_user)):
+    a = await db.comm_analyses.find_one({"owner": user["id"]}, sort=[("created_at", -1)])
+    return _clean(a) if a else None
+
+
+@api.get("/compliance/consent-text")
+async def consent_text(user: dict = Depends(get_current_user)):
+    return {"consent": comms.CONSENT_TEXT, "clausola_2712": comms.CLAUSOLA_2712}
 
 
 @api.get("/")

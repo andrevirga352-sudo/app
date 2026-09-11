@@ -1,0 +1,29 @@
+{
+  "summary": "Third iteration — full validation of new INGESTIONE COMUNICAZIONI INFORMALI module (Agent A6). Backend: added TestCommunications class (7 tests, all PASS) to /app/backend/tests/test_juspatrimonium.py covering: /api/compliance/consent-text (contains 'art. 2712' + 'art. 24'), /api/communications/upload consent enforcement (400 without consent), PII masking (masked_preview contains '*** ****'), institutional role detection ('Assessore Cultura' -> 'Rappresentante istituzionale'), list & GET (no _id leak), A6 contradiction analysis (returns discrepanze[], prospetto[] with all 4 required keys data_ora/interlocutore/estratto/rilevanza_vizio, clausola_2712 containing 'art. 2712'), /api/communications/analyses/latest, and Fascicolo snapshot integration (snapshot.communications with clausola + prospetto rendered inside PDF). Frontend: end-to-end verified via Playwright — (a) admin login -> nav-tab-communications -> /app/comunicazioni renders communications-view + comm-guide-tooltip + comm-consent-checkbox; (b) uploading WHATSAPP .txt WITHOUT consent triggers Italian error toast 'Accetta la dichiarazione di conformità privacy per procedere' and blocks upload; (c) after consent + upload the item appears in Comunicazioni acquisite (3 msg parsed); (d) 'Analizza Contraddittorio' button renders probative-table with 4-column prospetto + discrepanza cards + art. 2712 clause + copy-clause-button; (e) DocumentAnalysis /app/documenti shows comm-link-card with go-to-communications navigating back to /app/comunicazioni; (f) admin generates draft -> request-asseverazione-button creates casefile -> lawyer login -> newest casefile in /lawyer-portal shows lawyer-prospetto column with all rows AND download-fascicolo-button returns a valid 12.9KB PDF (200).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_juspatrimonium.py",
+    "/app/test_reports/pytest/comm_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "comms.mask_pii: _PHONE_RE is greedy (r'\\+?\\d[\\d\\s().\\-]{7,}\\d') and may accidentally match sequences that include date/time digits when they touch numbers on the same line; current test text is safe but consider anchoring to the start of the number token to avoid rare false positives.",
+    "comms.py enrich_messages uses a for/else block on the role_kw loop — subtle Python idiom; a helper 'detect_role(mittente)' would improve readability.",
+    "server.py:608 always overrides snapshot.communications with the latest comm_analysis for the owner, regardless of whether the fascicolo relates to that analysis; acceptable for MVP but consider linking analyses to a specific job_id/case.",
+    "server.py: /api/communications/analyze uses default max_tokens=2600 for the A6 LLM; ~40s latency observed. If frontend UX is a concern add optimistic progress steps like orchestrator bus.",
+    "server.py still 866 lines and mixes 7 concerns (auth, docs, orchestrator, damage, generator, vault, casefiles, lawyers, communications) — should be split into APIRouters (unchanged from iter 2)."
+  ],
+  "updated_files": ["/app/backend/tests/test_juspatrimonium.py"],
+  "success_rate": { "backend": "100% (7/7 new communications tests + existing 26/26 preserved)", "frontend": "100% for all specified flows (consent gate, upload, analyze, prospetto, art.2712 clause+copy, DocumentAnalysis card, lawyer fascicolo integration + PDF download)" },
+  "test_credentials": "admin@juspatrimonium.it / Patrimonio2026! and legale@juspatrimonium.it / Legale2026! — both verified",
+  "seed_data_creation": "Uploaded WhatsApp .txt (3 messages) and generated a comm_analysis + a TEST_cf_comms casefile with communications snapshot.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "A6 communications module fully validated backend + UI. PII masking pattern '*** ****' is stable. Institutional role detection uses substring match against a Italian keyword list in comms.enrich_messages. Fascicolo PDF now embeds section 5 'Prospetto Comunicazioni Informali' + art.2712 clause when snapshot.communications is present. Test file test_juspatrimonium.py now has ~33 tests total; run whole suite with pytest --junitxml.",
+  "rca of the issue": "N/A — no bugs found in this iteration."
+}

@@ -8,7 +8,7 @@ import os
 import json
 import re
 import asyncio
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
 EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY")
 MODEL_PROVIDER = "openai"
@@ -21,6 +21,11 @@ LLM_SEM = asyncio.Semaphore(1)
 async def llm_send(chat, text: str):
     async with LLM_SEM:
         return await chat.send_message(UserMessage(text=text))
+
+
+async def llm_send_message(chat, message: UserMessage):
+    async with LLM_SEM:
+        return await chat.send_message(message)
 
 JSON_CONTRACT = (
     "\n\nRispondi ESCLUSIVAMENTE con un oggetto JSON valido, senza testo fuori dal JSON, "
@@ -214,3 +219,61 @@ async def run_orchestrator_synthesis(session_id: str, agent_reports: dict, case_
     )
     resp = await llm_send(chat, text)
     return _extract_json(resp)
+
+
+
+# ------------------------- A6: Sotto-agente Contraddittorio (comunicazioni informali) -------------------------
+CONTRADICTION_AGENT = {
+    "id": "A6", "name": "Cross-Examination & Bad-Faith Detector", "color": "cyan", "icon": "MessagesSquare",
+    "role": "Rilevamento malafede e lesione del legittimo affidamento",
+}
+
+CONTRADICTION_SYSTEM = (
+    "Sei A6 - Cross-Examination & Bad-Faith Detector del Cluster A. Confronti cronologicamente le comunicazioni "
+    "informali (WhatsApp/email) con i rappresentanti della P.A. e gli atti formali (delibere, note di revoca, determine). "
+    "Rilevi discrepanze critiche: (a) rassicurazioni scritte su spazi/date/rinvii seguite da atti di revoca improvvisa "
+    "(violazione buona fede e leale collaborazione ex art. 1 L. 241/1990); (b) consapevolezza preventiva dei funzionari "
+    "circa stato/mole/natura dei beni (esclusione dell'errore scusabile). Per ogni messaggio rilevante compili una riga "
+    "del prospetto probatorio." + JSON_CONTRACT +
+    '\nSchema: {"discrepanze":[{"tipo":"","descrizione":"","norma":""}],'
+    '"prospetto":[{"data_ora":"","interlocutore":"","estratto":"","rilevanza_vizio":""}],"sintesi":""}'
+)
+
+TRANSCRIBE_SYSTEM = (
+    "Trascrivi FEDELMENTE il contenuto testuale di questo screenshot di una conversazione (WhatsApp/email/SMS). "
+    "Riporta ogni messaggio su una riga nel formato: [data ora] Mittente: testo. "
+    "Se data/ora non sono visibili, ometti le parentesi. Non aggiungere commenti: solo la trascrizione."
+)
+
+STRUCTURE_SYSTEM = (
+    "Estrai i singoli messaggi dal testo di una conversazione (email/chat) e restituiscili strutturati." + JSON_CONTRACT +
+    '\nSchema: {"messaggi":[{"data":"","ora":"","mittente":"","ruolo":"","testo":""}]}'
+)
+
+
+async def transcribe_image(session_id: str, image_base64: str, max_tokens: int = 1500) -> str:
+    chat = (
+        LlmChat(api_key=EMERGENT_LLM_KEY, session_id=session_id, system_message=TRANSCRIBE_SYSTEM)
+        .with_model(MODEL_PROVIDER, MODEL_NAME).with_params(max_tokens=max_tokens)
+    )
+    msg = UserMessage(text="Trascrivi la conversazione nello screenshot.", file_contents=[ImageContent(image_base64=image_base64)])
+    return await llm_send_message(chat, msg)
+
+
+async def structure_messages(session_id: str, raw_text: str, max_tokens: int = 2000):
+    chat = (
+        LlmChat(api_key=EMERGENT_LLM_KEY, session_id=session_id, system_message=STRUCTURE_SYSTEM)
+        .with_model(MODEL_PROVIDER, MODEL_NAME).with_params(max_tokens=max_tokens)
+    )
+    out = _extract_json(await llm_send(chat, raw_text[:8000]))
+    return out.get("messaggi", []) if isinstance(out, dict) else []
+
+
+async def run_contradiction(session_id: str, messages: list, acts_text: str, max_tokens: int = 2600):
+    chat = (
+        LlmChat(api_key=EMERGENT_LLM_KEY, session_id=session_id, system_message=CONTRADICTION_SYSTEM)
+        .with_model(MODEL_PROVIDER, MODEL_NAME).with_params(max_tokens=max_tokens)
+    )
+    conv = "\n".join(f"[{m.get('data','')} {m.get('ora','')}] {m.get('mittente','')} ({m.get('ruolo','')}): {m.get('testo','')}" for m in messages)[:6000]
+    text = f"ATTI FORMALI DELLA P.A.:\n{(acts_text or 'n.d.')[:4000]}\n\nCOMUNICAZIONI INFORMALI (cronologiche):\n{conv}"
+    return _extract_json(await llm_send(chat, text))

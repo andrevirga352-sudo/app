@@ -11,6 +11,7 @@ import DocumentAnalysis from "./pages/DocumentAnalysis";
 import DamageMatrix from "./pages/DamageMatrix";
 import Generator from "./pages/Generator";
 import Vault from "./pages/Vault";
+import Communications from "./pages/Communications";
 import LawyerPortal from "./pages/LawyerPortal";
 import AdminLawyers from "./pages/AdminLawyers";
 import { Loader2 } from "lucide-react";
@@ -61,6 +62,7 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="orchestrator" element={<Orchestrator />} />
               <Route path="documenti" element={<DocumentAnalysis />} />
+              <Route path="comunicazioni" element={<Communications />} />
               <Route path="danno" element={<DamageMatrix />} />
               <Route path="generatore" element={<Generator />} />
               <Route path="vault" element={<Vault />} />

@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
-import { UploadCloud, FileText, Send, Loader2, Library, ClipboardPaste } from "lucide-react";
+import { UploadCloud, FileText, Send, Loader2, Library, ClipboardPaste, MessagesSquare, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DocumentAnalysis() {
@@ -81,6 +81,20 @@ export default function DocumentAnalysis() {
           <Button data-testid="save-paste-button" onClick={savePaste} className="mt-2 bg-slate-900 hover:bg-slate-800 text-white">Salva documento</Button>
         </Card>
       </div>
+
+      <Card className="p-5 border-cyan-200 bg-cyan-50/40 mt-4 flex items-center justify-between gap-4" data-testid="comm-link-card">
+        <div className="flex items-start gap-3 min-w-0">
+          <MessagesSquare className="w-5 h-5 text-cyan-700 mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <h3 className="text-base font-serif font-semibold text-slate-900">Comunicazioni Informali e Interlocuzioni Istituzionali</h3>
+            <p className="text-xs text-slate-600 mt-0.5">Chat WhatsApp, email e screenshot con funzionari P.A. — sanitizzazione GDPR e prospetto probatorio ex art. 2712 c.c.</p>
+          </div>
+        </div>
+        <Button data-testid="go-to-communications" variant="outline" className="shrink-0 border-cyan-300"
+          onClick={() => nav("/app/comunicazioni")}>
+          Apri <ArrowRight className="w-4 h-4 ml-1.5" />
+        </Button>
+      </Card>
 
       <Card className="p-6 border-slate-200 mt-4">
         <div className="flex items-center gap-2 mb-4">

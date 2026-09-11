@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
-  LayoutDashboard, Network, FileSearch, Calculator, FileSignature, Database, Scale, LogOut, Gavel,
+  LayoutDashboard, Network, FileSearch, Calculator, FileSignature, Database, Scale, LogOut, Gavel, MessagesSquare,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Footer } from "./Legal";
@@ -11,6 +11,7 @@ const NAV = [
   { to: "/app/dashboard", label: "Quadro Generale", icon: LayoutDashboard, testid: "nav-tab-dashboard", sub: "Rischi & scadenze" },
   { to: "/app/orchestrator", label: "Console Multi-Agente", icon: Network, testid: "nav-tab-orchestrator", sub: "Bus Cluster A" },
   { to: "/app/documenti", label: "Audit Documentale", icon: FileSearch, testid: "nav-tab-document-analysis", sub: "Atti PA & contratti" },
+  { to: "/app/comunicazioni", label: "Comunicazioni Informali", icon: MessagesSquare, testid: "nav-tab-communications", sub: "Contraddittorio A6" },
   { to: "/app/danno", label: "Stima Peritale del Pregiudizio", icon: Calculator, testid: "nav-tab-damage-matrix", sub: "Quantificazione economica" },
   { to: "/app/generatore", label: "Generatore Bozze Tecniche", icon: FileSignature, testid: "nav-tab-generator", sub: "PEC · TAR · Corte Conti" },
   { to: "/app/vault", label: "Vault Memoria", icon: Database, testid: "nav-tab-vault", sub: "RAG & self-learning" },

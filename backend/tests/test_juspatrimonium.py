@@ -322,3 +322,86 @@ class TestAdminLawyers:
         r = admin_session.post(f"{API}/admin/lawyers",
                                json={"email": LAWYER_EMAIL, "password": "AnyPass1!", "name": "dup"}, timeout=15)
         assert r.status_code == 400
+
+
+# ---------------- Communications (WhatsApp ingestion + A6 contradiction) ----------------
+WHATSAPP_TXT = (
+    "[08/01/2024, 10:15:32] Assessore Cultura: confermo i locali del Chiostro per tutto il 2024, mi trova al +39 333 1234567\n"
+    "[15/02/2024, 09:00:00] APS: grazie, procediamo con la programmazione culturale\n"
+    "[10/03/2024, 18:44:00] APS: abbiamo ricevuto la revoca con 30 giorni di preavviso, in aperto contrasto con la Sua rassicurazione\n"
+)
+
+
+class TestCommunications:
+    def test_consent_text(self, admin_session):
+        r = admin_session.get(f"{API}/compliance/consent-text", timeout=15)
+        assert r.status_code == 200
+        d = r.json()
+        assert "art. 2712" in d["clausola_2712"]
+        assert "art. 24" in d["consent"] or "Costituzione" in d["consent"]
+
+    def test_upload_rejects_without_consent(self, admin_session):
+        files = {"file": ("chat.txt", io.BytesIO(WHATSAPP_TXT.encode("utf-8")), "text/plain")}
+        r = admin_session.post(f"{API}/communications/upload", files=files, data={"consent": "false"}, timeout=20)
+        assert r.status_code == 400
+        assert "onsenso" in r.text or "consenso" in r.text.lower()
+
+    def test_upload_with_consent_masks_pii(self, admin_session):
+        files = {"file": ("chat.txt", io.BytesIO(WHATSAPP_TXT.encode("utf-8")), "text/plain")}
+        r = admin_session.post(f"{API}/communications/upload", files=files, data={"consent": "true"}, timeout=30)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d["message_count"] > 0
+        assert "*** ****" in d["masked_preview"], f"PII mask missing: {d['masked_preview'][:200]}"
+        # institutional role detected in enriched messages
+        roles = [m.get("ruolo", "") for m in d["messages"]]
+        assert any("istituzionale" in r.lower() for r in roles), f"No institutional role in {roles}"
+        # Save for next test
+        pytest.comm_id = d["id"]
+
+    def test_list_and_get_communication(self, admin_session):
+        r = admin_session.get(f"{API}/communications", timeout=15)
+        assert r.status_code == 200
+        arr = r.json()
+        assert isinstance(arr, list) and len(arr) >= 1
+        cid = getattr(pytest, "comm_id", arr[0]["id"])
+        r2 = admin_session.get(f"{API}/communications/{cid}", timeout=15)
+        assert r2.status_code == 200
+        assert "_id" not in r2.json()
+
+    def test_analyze_contradiction(self, admin_session):
+        r = admin_session.post(f"{API}/communications/analyze",
+                               json={"comm_ids": [], "acts_text": "Delibera n.42/2024: revoca in autotutela."},
+                               timeout=120)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert isinstance(d.get("prospetto"), list)
+        assert "art. 2712" in d.get("clausola_2712", "")
+        # prospetto rows have required keys (if any row returned)
+        if d["prospetto"]:
+            row = d["prospetto"][0]
+            for k in ("data_ora", "interlocutore", "estratto", "rilevanza_vizio"):
+                assert k in row, f"Missing key {k} in prospetto row: {row}"
+
+    def test_latest_analysis(self, admin_session):
+        r = admin_session.get(f"{API}/communications/analyses/latest", timeout=15)
+        assert r.status_code == 200
+        d = r.json()
+        assert d is not None
+        assert "art. 2712" in d.get("clausola_2712", "")
+
+    def test_casefile_includes_communications_snapshot(self, admin_session):
+        r = admin_session.post(f"{API}/casefiles",
+                               json={"draft_body": "Bozza con comunicazioni.", "draft_label": "TEST_cf_comms",
+                                     "tipo_atto": "diffida"}, timeout=20)
+        assert r.status_code == 200
+        cf_id = r.json()["id"]
+        r2 = admin_session.get(f"{API}/casefiles/{cf_id}", timeout=15)
+        assert r2.status_code == 200
+        snapshot = r2.json().get("snapshot", {})
+        assert "communications" in snapshot, f"snapshot missing 'communications': keys={list(snapshot.keys())}"
+        assert "art. 2712" in (snapshot["communications"].get("clausola") or "")
+        # PDF should render (art. 2712 section)
+        r3 = admin_session.get(f"{API}/casefiles/{cf_id}/pdf", timeout=30)
+        assert r3.status_code == 200
+        assert r3.content[:4] == b"%PDF"
