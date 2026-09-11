@@ -1,0 +1,37 @@
+{
+  "summary": "Backend: 19/20 tests pass. Auth, documents, presets, dashboard, damage matrix, generator (LLM draft + PDF/DOCX export), vault (stats/search/dataset) all work. CRITICAL: full Orchestrator run (POST /api/orchestrator/run + polling) always FAILS because the Emergent LLM key on this environment has concurrency=1 while server.py:312 uses asyncio.gather to run A1/A2/A3 in parallel -> 429 concurrent_request_limit. Frontend: login works with admin credentials, redirect to /app/dashboard sticks (no race-condition bounce), all 6 nav tabs load, all documented data-testid selectors are present on the Orchestrator (load-preset-button, cluster-a-run-orchestrator-button, case-text-input). Full end-to-end orchestrator UI run was NOT executed because backend concurrency bug guarantees failure.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "/api/orchestrator/run", "issue": "Wave 1 uses asyncio.gather for A1/A2/A3, but Emergent LLM key allows only 1 concurrent request -> job status='failed' with 'litellm.RateLimitError ... concurrent_request_limit'. Every orchestration run fails. Fix: run A1->A2->A3 sequentially (replace asyncio.gather in server.py _run_orchestration Wave 1 with a for-loop) OR add a semaphore(1) around ag.run_agent calls.", "priority": "CRITICAL"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Orchestrator run", "issue": "UI will always show 'failed' status because backend orchestration crashes on parallel LLM call. Blocked by backend critical bug above.", "affected_selectors": ["cluster-a-run-orchestrator-button", "synthesis-panel"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_juspatrimonium.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "URGENT: In /app/backend/server.py _run_orchestration Wave 1, replace `results = await asyncio.gather(*[do_agent(a) for a in wave1])` with a sequential loop (`for a in wave1: results.append(await do_agent(a))`) so LLM calls respect the Emergent key concurrency=1 limit. Same applies anywhere else parallel LLM calls could occur.",
+    "After the fix, retest full orchestrator flow (expect ~90-150s runtime, still under 180s budget) and confirm UI shows 5 agent cards idle->running->done, bus log populates, synthesis-panel appears."
+  ],
+  "critical_code_review_comments": [
+    "server.py:312 asyncio.gather over 3 LLM agents is incompatible with a concurrency=1 LLM key; must be sequential or gated by a semaphore.",
+    "server.py CORS uses allow_credentials=True with an explicit FRONTEND_URL origin — good. But .env also has CORS_ORIGINS=\"*\" which is unused; consider removing to avoid confusion.",
+    "server.py:71-72 cookies set samesite='none' + secure=True require HTTPS — fine for preview but will break local http testing.",
+    "server.py get_current_user uses ObjectId(payload['sub']) but register/login store users with default Mongo _id (ObjectId). OK. However token has no role claim — role is re-fetched from DB each request (acceptable).",
+    "agents.py uses one shared EMERGENT_LLM_KEY across many concurrent sessions; add a global asyncio.Semaphore(1) wrapper to make this robust regardless of caller.",
+    "server.py is 577 lines and mixes auth, documents, orchestrator, damage, generator, vault — should be split into routers for maintainability."
+  ],
+  "updated_files": ["/app/backend/tests/test_juspatrimonium.py"],
+  "success_rate": {"backend": "95% (19/20; orchestrator E2E blocked)", "frontend": "100% for navigation/auth (orchestrator full run blocked by backend)"},
+  "test_credentials": "admin@juspatrimonium.it / Patrimonio2026! — verified working",
+  "seed_data_creation": "Created TEST_doc pasted documents and a damage matrix save via tests; created one throwaway registered user per run (test_user_<ts>@example.com).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend pytest file at /app/backend/tests/test_juspatrimonium.py covers all endpoints. The single failing test TestOrchestrator::test_run_full_flow polls up to ~220s and will pass once main agent serializes the LLM calls in _run_orchestration Wave 1. Frontend nav & auth verified — focus next iteration on: (1) rerunning TestOrchestrator, (2) verifying UI shows A1..A5 running->done, Bus log, and data-testid=synthesis-panel with dual-track plan + totale_danno.",
+  "rca of the issue": "Root cause: server.py:312 `results = await asyncio.gather(*[do_agent(a) for a in wave1])` fires 3 concurrent LlmChat.send_message calls. The Emergent LLM key in this environment enforces concurrency_request_limit=1 (litellm 429). The first agent succeeds; the two others 429; asyncio.gather raises; the except block marks job status='failed' and stores the error. Reproduction: POST /api/orchestrator/run with any case_text, then poll GET /api/orchestrator/run/{id} -> status flips to 'failed' within a few seconds with error containing 'CONCURRENCY_REQUEST_LIMIT'. Mitigation: sequential loop OR asyncio.Semaphore(1) gating ag.run_agent."
+}

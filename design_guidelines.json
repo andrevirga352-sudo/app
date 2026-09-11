@@ -1,0 +1,200 @@
+{
+  "project_name": "JUS-PATRIMONIUM | Cluster A Multi-Agent Orchestrator",
+  "archetype": "ARCHETYPE 4 (SWISS & HIGH-CONTRAST / JURIDICAL COMMAND CENTER) blended with ARCHETYPE 1 (WARM STONE & ARCHIVAL TERRACOTTA)",
+  "concept_narrative": "A hyper-rigorous institutional legal-tech platform tailored for Italian public-private cultural heritage partnerships (PPP) and contentious administrative disputes. Melds Italian archival rigor (warm stone, antique marble, terracotta alerts) with high-density Swiss legal engineering (monochrome slate, deep navy, strict 1px grid borders, live multi-agent bus telemetries).",
+  "theme_strategy": {
+    "default_theme": "light",
+    "rationale": "Legal drafting, TAR judicial appeals, Corte dei Conti audits, and administrative scrutiny mandate maximum optical contrast and legibility without eye fatigue. An optional dark mode toggle ('Archival Night') is supported.",
+    "light_palette": {
+      "bg_canvas": "#F8F9FA",
+      "bg_surface": "#FFFFFF",
+      "bg_subtle": "#F1F4F7",
+      "text_primary": "#0F172A",
+      "text_secondary": "#475569",
+      "text_muted": "#64748B",
+      "border_subtle": "#E2E8F0",
+      "border_contrast": "#CBD5E1",
+      "brand_primary": "#0F2027",
+      "brand_secondary": "#1E3A8A",
+      "brand_terracotta": "#C2410C",
+      "brand_amber_warning": "#D97706",
+      "brand_emerald_success": "#047857",
+      "brand_crimson_danger": "#BE123C"
+    },
+    "dark_palette": {
+      "bg_canvas": "#0B0F19",
+      "bg_surface": "#111827",
+      "bg_subtle": "#1E293B",
+      "text_primary": "#F8FAFC",
+      "text_secondary": "#94A3B8",
+      "border_subtle": "#334155",
+      "brand_primary": "#38BDF8"
+    }
+  },
+  "typography": {
+    "font_family_headings": "Cinzel, Cormorant Garamond, Georgia, serif",
+    "font_family_body": "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+    "font_family_mono": "JetBrains Mono, Menlo, monospace",
+    "scale": {
+      "h1": "text-3xl sm:text-4xl font-serif font-bold tracking-tight text-slate-900",
+      "h2": "text-2xl sm:text-3xl font-serif font-semibold tracking-tight text-slate-800",
+      "h3": "text-xl sm:text-2xl font-serif font-medium text-slate-800",
+      "h4": "text-base sm:text-lg font-sans font-semibold tracking-normal text-slate-900",
+      "body": "text-sm sm:text-base font-sans text-slate-700 leading-relaxed",
+      "legal_code": "text-xs font-mono tracking-wide text-slate-600 uppercase",
+      "label_eyebrow": "text-xs font-mono font-semibold tracking-widest uppercase text-slate-500"
+    }
+  },
+  "visual_enhancers": {
+    "grid_borders": "1px solid border-slate-200 with border-collapse feel for tabular administrative registries",
+    "crystal_glass_nav": "bg-white/85 backdrop-blur-xl border-b border-slate-200/80 shadow-xs",
+    "badge_styles": "font-mono text-xs uppercase px-2.5 py-0.5 rounded-sm border inline-flex items-center gap-1.5",
+    "card_surfaces": "bg-white border border-slate-200/90 shadow-[0_1px_3px_rgba(15,23,42,0.04)] rounded-lg p-5 sm:p-6",
+    "agent_telemetry_beam": "pulsing status rings (emerald for idle/ready, amber for calculating, blue for drafting, rose for breach flagged)"
+  },
+  "image_urls": {
+    "hero_heritage": {
+      "url": "https://images.unsplash.com/photo-1661815251632-30f0f0afd8da?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NjZ8MHwxfHNlYXJjaHwyfHxpdGFsaWFuJTIwaGVyaXRhZ2UlMjBtb251bWVudHxlbnwwfHx8fDE3ODkxMTkyMjJ8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Italian neoclassical heritage building with colonnades and historic statutes",
+      "category": "Hero Banner & Heritage Asset Showcase",
+      "placement": "Used in the top summary banner of Cultural Heritage dispute portfolio and login backdrop with 35% opacity scrim"
+    },
+    "legal_justice_statue": {
+      "url": "https://images.unsplash.com/photo-1589994965851-a8f479c573a9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjh8MHwxfHNlYXJjaHwyfHxjb3VydCUyMGxlZ2FsJTIwYXJjaGl2ZXN8ZW58MHx8fHwxNzg5MTE5MjIyfDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Statue of Lady Justice with scales and sword",
+      "category": "Legal & Court Procedures",
+      "placement": "Cluster A header card and TAR procedural filing section"
+    },
+    "historic_monument_equestrian": {
+      "url": "https://images.unsplash.com/photo-1777465849333-eeae28e7e4ff?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NjZ8MHwxfHNlYXJjaHw0fHxpdGFsaWFuJTIwaGVyaXRhZ2UlMjBtb251bWVudHxlbnwwfHx8fDE3ODkxMTkyMjJ8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Equestrian statue in front of a grand Italian historic palazzo",
+      "category": "Asset Registry Card",
+      "placement": "Thumbnail for Complex Ethno-Anthropological Property Case Studies"
+    },
+    "archival_manuscript": {
+      "url": "https://images.unsplash.com/photo-1467688695332-6b486449d78f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwxfHxhbmNpZW50JTIwbWFudXNjcmlwdCUyMGFyY2hpdmV8ZW58MHx8fHwxNzg5MTE5MjI2fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Historic illuminated manuscript and ancient legal codex",
+      "category": "Knowledge Base & RAG Vault",
+      "placement": "Evolutionary Vector Vault card visual and training dataset section"
+    }
+  },
+  "cluster_a_agents": [
+    {
+      "id": "agent-1",
+      "name": "Administrative Auditor",
+      "role": "Verifica legittimità delibere PA, vizi di forma, eccesso di potere e conformità Codice Appalti (D.Lgs 36/2023)",
+      "color": "blue",
+      "icon": "FileCheck2",
+      "status": "ready"
+    },
+    {
+      "id": "agent-2",
+      "name": "Contractual Breach Specialist",
+      "role": "Rilevazione inadempimenti convenzione partenariato speciale pubblico-privato (PSPP D.Lgs 42/2004 art. 151 c.3)",
+      "color": "amber",
+      "icon": "AlertTriangle",
+      "status": "ready"
+    },
+    {
+      "id": "agent-3",
+      "name": "Third-Sector & Subsidy Expert",
+      "role": "Codice Terzo Settore (D.Lgs 117/2017 art. 55-56 co-progettazione), contributi PNRR Borghi e vincoli d'uso",
+      "color": "emerald",
+      "icon": "Handshake",
+      "status": "ready"
+    },
+    {
+      "id": "agent-4",
+      "name": "Damages & Restitution Quantifier",
+      "role": "Calcolo danno patrimoniale emergente, lucro cessante da revoca illegittima, danno alla conservazione del bene vincolato",
+      "color": "rose",
+      "icon": "Calculator",
+      "status": "ready"
+    },
+    {
+      "id": "agent-5",
+      "name": "Court & Procedural Drafter",
+      "role": "Redazione istanze di sospensiva TAR, memorie difensive, PEC di diffida e messa in mora, segnalazione Procura Corte dei Conti",
+      "color": "purple",
+      "icon": "ScrollText",
+      "status": "ready"
+    }
+  ],
+  "core_views_and_navigation": [
+    {
+      "id": "dashboard",
+      "label": "Quadro Generale & Rischio",
+      "description": "Status partenariato, Mappa dei Rischi procedurali, Scadenziario preavvisi (ex art. 10-bis L.241/90)"
+    },
+    {
+      "id": "orchestrator",
+      "label": "Console Multi-Agente (Cluster A)",
+      "description": "Bus di orchestrazione centrale, run sinergici dei 5 agenti, step log e reflection feedback loop"
+    },
+    {
+      "id": "document-analysis",
+      "label": "Analisi Documentale PA",
+      "description": "Upload e scansione delibere, contratti concessori, note di revoca unilaterale ed estrazione clausole"
+    },
+    {
+      "id": "damage-matrix",
+      "label": "Matrice Quantificazione Danno",
+      "description": "Simulatore tabellare del danno erariale ed extracontrattuale con export tabellare"
+    },
+    {
+      "id": "generator",
+      "label": "Generatore Atti & PEC",
+      "description": "Compositore diffide, ricorsi TAR, istanze accesso atti (L.241/90) e segnalazione Corte dei Conti con PDF & DOCX download"
+    },
+    {
+      "id": "vault",
+      "label": "Vault Memoria Evolutiva (RAG)",
+      "description": "Knowledge base vettoriale, dataset JSONL, benchmark giurisprudenziale e self-learning reflection loop"
+    }
+  ],
+  "component_guidelines": {
+    "buttons": "Pill or subtle 6px radius, hover states with explicit text colors (e.g., bg-slate-900 hover:bg-slate-800 text-white font-medium px-4 py-2 text-sm shadow-xs transition-colors duration-150)",
+    "cards": "Subtle borders border-slate-200 bg-white rounded-lg p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)]",
+    "modals_and_drawers": "Sheet/Dialog with solid high opacity background (bg-white or bg-slate-900), no see-through transparent overlays, crystal glass scrim backdrop-blur-sm bg-slate-900/40",
+    "tables": "Dense, clean tabular presentation with hover highlight on rows, monospaced dates and monetary values aligned right",
+    "alerts": "Institutional colored left-border callouts with legal citation references (e.g., 'Art. 21-quinquies L. 241/90')"
+  },
+  "testing_attributes": {
+    "rule": "Every button, link, tab trigger, input, select, download trigger, and modal trigger MUST include data-testid with kebab-case role naming",
+    "examples": [
+      "data-testid='nav-tab-dashboard'",
+      "data-testid='nav-tab-orchestrator'",
+      "data-testid='nav-tab-document-analysis'",
+      "data-testid='nav-tab-damage-matrix'",
+      "data-testid='nav-tab-generator'",
+      "data-testid='nav-tab-vault'",
+      "data-testid='cluster-a-run-orchestrator-button'",
+      "data-testid='document-upload-dropzone'",
+      "data-testid='export-pdf-action-button'",
+      "data-testid='export-docx-action-button'",
+      "data-testid='damage-matrix-calculate-btn'",
+      "data-testid='user-profile-menu-button'",
+      "data-testid='auth-login-submit-button'"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Build a production-grade, ultra-sophisticated Single Page App with tabbed views or React Router for the JUS-PATRIMONIUM platform in React .js.",
+    "Implement the full 5-agent Cluster A workflow with an interactive Orchestration Bus visualizer: show agent message passing, prompt reflections, confidence scores, and legal citation linkages.",
+    "Include a live Procedural Risk Radar / Heatmap (e.g. Scadenza termini ricorso TAR 60gg, decadenza PNRR, silenzio inadempimento, periculum in mora).",
+    "Provide interactive Document Generation with realistic, authentic Italian administrative and legal templates (Ricorso TAR Lazio/Regionale con istanza cautelare, Diffida ad Adempiere ex art. 1454 c.c., Segnalazione Procura Regionale Corte dei Conti per danno erariale, Memorie difensive su preavviso di diniego/revoca ex art. 10-bis).",
+    "Provide real functional export: Client-side PDF generation (using window.print or jsPDF/blob styling) and DOCX generation / formatted rich text document download with timestamps and digital protocol simulation.",
+    "Include Document Ingestion with preset test legal acts (e.g. 'Delibera Comunale n. 42_2024 Revoca Concessione Chiostro San Francesco.pdf', 'Convenzione Partenariato Speciale PSPP art 151.docx') ready for one-click analysis.",
+    "Include the Damage & Restitution Quantifier interactive table with breakdown (Danno Patrimoniale, Investimenti non ammortizzati, Danno di immagine al Terzo Settore, Oneri di custodia bene vincolato).",
+    "Implement the Evolutionary Memory Vault with inspectable JSONL logs, vector search query tester, and self-learning reflection logs.",
+    "Integrate Sonner toast notifications for all system events (e.g., 'Agente Administrative Auditor: rilevata violazione art. 3 L. 241/90 motivazione per relationem viziata').",
+    "Ensure every interactive element has a rigorous data-testid attribute for automated testing."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Do not use dark colors as gradients. Maintain clean structural contrast.",
+    "Never center-align the main application container; preserve clear left-aligned hierarchical reading.",
+    "Do not use emojis as tech icons; use Lucide React icons exclusively.",
+    "Never use generic transparent dropdowns or unstyled alerts.",
+    "Use generous spacing (p-6, p-8) on cards and layout containers to allow institutional content to breathe.",
+    "Ensure all text meets APCA / WCAG AA contrast standards over light backgrounds."
+  ]
+}

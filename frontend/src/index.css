@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 194 44% 11%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 30% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 30% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 214 95% 93%;
+    --accent-foreground: 224 64% 33%;
+    --destructive: 347 77% 40%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 224 64% 33%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: 'Cinzel', 'Cormorant Garamond', Georgia, serif; }
+}
+
+.jp-canvas {
+  background-color: #F8F9FA;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(15,23,42,0.04) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+.jp-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.jp-mono { font-family: 'JetBrains Mono', monospace; }
+
+@keyframes jp-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(30,58,138,0.35); }
+  70% { box-shadow: 0 0 0 8px rgba(30,58,138,0); }
+  100% { box-shadow: 0 0 0 0 rgba(30,58,138,0); }
+}
+.jp-pulse { animation: jp-pulse-ring 1.6s infinite; }
+
+@keyframes jp-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.jp-fade-up { animation: jp-fade-up 0.4s ease-out both; }
+
+.jp-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.jp-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 8px; }
